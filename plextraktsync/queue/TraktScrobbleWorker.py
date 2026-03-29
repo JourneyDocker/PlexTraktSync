@@ -19,6 +19,7 @@ class TraktScrobbleWorker:
     # Queues this Worker can handle
     QUEUES = (
         "scrobble_update",
+        "scrobble_pause",
         "scrobble_stop",
     )
     logger = logging.getLogger(__name__)
