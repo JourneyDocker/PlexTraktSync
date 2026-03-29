@@ -81,16 +81,17 @@ Proceed to [Install dependencies](#install-dependencies)
 
 This applies to [GitHub download](#github-download) and [Git clone](#git-clone).
 
-In the `PlexTraktSync` directory, install the required Python packages:
+In the `PlexTraktSync` directory, install the required Python packages using [uv]:
 
 ```
-python3 -m pip install -r requirements.txt
+python3 -m pip install uv
+uv sync
 ```
 
 To run from `PlexTraktSync` directory:
 
 ```
-python3 -m plextraktsync
+uv run plextraktsync
 ```
 
 Or use a wrapper which is able to change directory accordingly:
@@ -99,15 +100,14 @@ Or use a wrapper which is able to change directory accordingly:
 /path/to/PlexTraktSync/plextraktsync.sh
 ```
 
-_or_ alternatively you can use [pipenv]:
+_or_ alternatively you can use pip directly:
 
 ```
-python3 -m pip install pipenv
-pipenv install
-pipenv run plextraktsync
+python3 -m pip install -r requirements.txt
+python3 -m plextraktsync
 ```
 
-[pipenv]: https://pipenv.pypa.io/
+[uv]: https://github.com/astral-sh/uv
 
 ### Install code from Pull request
 

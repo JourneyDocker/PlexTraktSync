@@ -90,7 +90,8 @@ echo Press any key to continue with setup...
 echo.
 pause > nul
 echo Installing Python requirements...
-pip install -r requirements.txt
+pip install uv
+uv pip install -r requirements.txt
 Pushd "%~dp0"
 call "plextraktsync.bat"
 goto :ENDIT

@@ -1,8 +1,0 @@
-#
-# Try to keep this to version that Dependabot has:
-#
-# - https://github.com/dependabot/dependabot-core/blob/main/python/helpers/requirements.txt
-#
-
--i https://pypi.org/simple/
-pipenv==2023.12.1

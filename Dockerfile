@@ -38,14 +38,14 @@ eot
 # Install app dependencies
 FROM base AS build
 RUN apk add git
-RUN pip install pipenv
+RUN pip install uv
 RUN \
 	--mount=type=bind,from=wheels,source=/wheels,target=/wheels \
-	pipenv run pip install /wheels/*.whl
+	uv pip install --system --no-deps /wheels/*.whl
 
 # Verify site-packages path
 ARG PYTHON_VERSION
-RUN du -sh /root/.local/share/virtualenvs/app-*/lib/python$PYTHON_VERSION/site-packages
+RUN du -sh /usr/local/lib/python$PYTHON_VERSION/site-packages
 
 FROM base AS compile
 ARG APP_VERSION=$APP_VERSION
@@ -105,7 +105,6 @@ eot
 # Copy things together
 COPY --from=tools /dist /
 ARG PYTHON_VERSION
-COPY --from=build /root/.local/share/virtualenvs/app-*/lib/python$PYTHON_VERSION/site-packages /usr/local/lib/python$PYTHON_VERSION/site-packages
 COPY --from=compile /app ./
 COPY entrypoint.sh /init
 RUN ln -s /app/plextraktsync.sh /usr/bin/plextraktsync
