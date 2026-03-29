@@ -39,6 +39,7 @@ class WatchStateUpdater(SetWindowTitle):
         self.remove_collection = config["watch"]["remove_collection"]
         self.add_collection = config["watch"]["add_collection"]
         self.session_media = {}
+        self.last_progress = {}
 
     def clamp_percent(self, percent: float) -> float:
         if percent < 0:
@@ -205,6 +206,13 @@ class WatchStateUpdater(SetWindowTitle):
                 f"on_play: Invalid percent for {m}: raw {raw_percent:.3F}% clamped {percent:.3F}%",
             )
 
+        if event.state == "playing":
+            key = str(m.trakt.ids.get('trakt', m.plex.key))
+            last = self.last_progress.get(key, 0)
+            if percent - last < 0.1:
+                self.logger.debug(f"on_play: Skipping scrobble for {m}: progress {percent:.3F}% last {last:.3F}%")
+                return
+
         self.logger.info(f"on_play: {movie}: {percent:.3F}%, State: {event.state}, Played: {movie.isPlayed}, LastViewed: {movie.lastViewedAt}")
         scrobbled = self.scrobble(m, percent, event)
 
@@ -226,20 +234,25 @@ class WatchStateUpdater(SetWindowTitle):
     def scrobble(self, m: Media, percent: float, event: PlaySessionStateNotification):
         tm = m.trakt
         state = event.state
+        key = str(m.trakt.ids.get('trakt', m.plex.key))
 
         if state == "playing":
             if self.progressbar is not None:
                 self.progressbar.play(m.plex, percent)
             self.set_window_title(f"Watching {m.title}")
 
-            return self.scrobblers[tm].update(percent)
+            result = self.scrobblers[tm].update(percent)
+            self.last_progress[key] = percent
+            return result
 
         if state == "paused":
             if self.progressbar is not None:
                 self.progressbar.pause(m.plex, percent)
             self.reset_title()
 
-            return self.scrobblers[tm].pause(percent)
+            result = self.scrobblers[tm].pause(percent)
+            self.last_progress[key] = percent
+            return result
 
         if state == "stopped":
             if self.progressbar is not None:
@@ -248,6 +261,7 @@ class WatchStateUpdater(SetWindowTitle):
 
             value = self.scrobblers[tm].stop(percent)
             del self.scrobblers[tm]
+            self.last_progress.pop(key, None)
             if self.sessions is not None:
                 del self.sessions[event.session_key]
             return value
