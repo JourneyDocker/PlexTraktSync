@@ -6,11 +6,14 @@ from click import ClickException
 from decorator import decorator
 from plexapi.exceptions import BadRequest
 from requests import ReadTimeout, RequestException
+import trakt.core
 from trakt.errors import (
     BadResponseException,
     TraktBadGateway,
     TraktInternalException,
     TraktUnavailable,
+    OAuthException,
+    OAuthRefreshException,
 )
 
 from plextraktsync.factory import logging
@@ -32,6 +35,8 @@ def retry(fn, retries=5, *args, **kwargs):
             TraktBadGateway,
             TraktUnavailable,
             TraktInternalException,
+            OAuthException,
+            OAuthRefreshException,
         ) as e:
             if count == retries:
                 logger.error(f"Error: {e}")
@@ -43,6 +48,10 @@ def retry(fn, retries=5, *args, **kwargs):
 
                 logger.error(f"Last call: {fn.__module__}.{fn.__name__}({args[1:]}, {kwargs})")
                 raise ClickException("API didn't respond properly, script will abort now. Please try again later.")
+
+            if isinstance(e, (OAuthException, OAuthRefreshException)):
+                logger.warning("OAuth token refresh failed in memory. Attempting to reload fresh tokens from disk...")
+                trakt.core.load_config()
 
             seconds = 1 + count
             count += 1

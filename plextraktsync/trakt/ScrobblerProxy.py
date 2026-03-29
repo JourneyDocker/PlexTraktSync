@@ -25,8 +25,13 @@ class ScrobblerProxy:
         self.queue.scrobble_update((self.scrobbler, progress))
 
     def pause(self, progress: float):
-        if progress < 1:  # Trakt requires pause to be at least 1%
-            progress = 1.0
+        if progress >= 80:
+            # Trakt will reject pause requests at 80% or above
+            self.logger.debug(f"skip pause({self.scrobbler.media}): {progress} (>= 80%)")
+            return
+
+        # Trakt requires pause to be at least 1%
+        progress = max(1.0, progress)
         self.logger.debug(f"pause({self.scrobbler.media}): {progress}")
         self.queue.scrobble_pause((self.scrobbler, progress))
 
@@ -34,11 +39,17 @@ class ScrobblerProxy:
         if progress >= self.threshold:
             self.logger.debug(f"stop({self.scrobbler.media}): {progress}")
             self.queue.scrobble_stop((self.scrobbler, progress))
-        else:
-            if progress < 1:  # Trakt requires pause to be at least 1%
-                progress = 1.0
-            self.logger.debug(f"pause({self.scrobbler.media}): {progress}")
-            self.queue.scrobble_pause((self.scrobbler, progress))
+            return
+
+        if progress >= 80:
+            # Don't send pause when progress is >= 80% but below user threshold
+            self.logger.debug(f"skip pause({self.scrobbler.media}): {progress} (between 80% and threshold)")
+            return
+
+        # Treat as pause for anything below 80%
+        progress = max(1.0, progress)
+        self.logger.debug(f"pause({self.scrobbler.media}): {progress}")
+        self.queue.scrobble_pause((self.scrobbler, progress))
 
     @cached_property
     def queue(self):
