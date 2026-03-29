@@ -32,6 +32,9 @@ class Queue:
     def scrobble_update(self, data):
         self.add_queue("scrobble_update", data)
 
+    def scrobble_pause(self, data):
+        self.add_queue("scrobble_pause", data)
+
     def scrobble_stop(self, data):
         self.add_queue("scrobble_stop", data)
 
