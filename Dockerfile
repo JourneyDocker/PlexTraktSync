@@ -1,5 +1,5 @@
-# syntax = docker/dockerfile:1.3-labs
-ARG PYTHON_VERSION=3.13
+# syntax = docker/dockerfile:1.22-labs
+ARG PYTHON_VERSION=3.14
 ARG ALPINE_VERSION=3.21
 FROM python:$PYTHON_VERSION-alpine$ALPINE_VERSION AS base
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_ROOT_USER_ACTION=ignore
