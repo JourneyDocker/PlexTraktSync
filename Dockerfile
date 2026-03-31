@@ -1,5 +1,3 @@
-# syntax = docker/dockerfile:1.22-labs
-
 # --- Base Image ---------------------------------------------------------------
 FROM python:3.14.3-alpine3.23 AS base
 WORKDIR /app
@@ -76,7 +74,7 @@ FROM base AS runtime
 # 1. System Setup: Create the non-root application user and group
 RUN <<EOF
     set -x
-    apk add --no-cache su-exec
+    apk add --no-cache su-exec tzdata
     addgroup --gid 1000 --system plextraktsync
     adduser \
         --disabled-password \
