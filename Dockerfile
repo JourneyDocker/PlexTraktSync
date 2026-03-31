@@ -76,6 +76,7 @@ FROM base AS runtime
 # 1. System Setup: Create the non-root application user and group
 RUN <<EOF
     set -x
+    apk add --no-cache su-exec
     addgroup --gid 1000 --system plextraktsync
     adduser \
         --disabled-password \
