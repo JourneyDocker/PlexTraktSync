@@ -1,5 +1,5 @@
 # --- Base Image ---------------------------------------------------------------
-FROM python:3.14.3-alpine3.23 AS base
+FROM python:3.14.4-alpine3.23 AS base
 WORKDIR /app
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_ROOT_USER_ACTION=ignore \
