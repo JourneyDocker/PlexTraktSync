@@ -14,7 +14,7 @@ class ScrobblerProxy:
     Proxy to Scrobbler that queues requests to update trakt
     """
 
-    WATCHED_THRESHOLD = 80
+    WATCHED_THRESHOLD = 98
 
     logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class ScrobblerProxy:
         progress = max(progress, 1.0)  # Trakt requires at least 1%
         # Cap progress below WATCHED_THRESHOLD to prevent Trakt from marking
         # a paused item as watched (stop with progress >= 80% triggers a scrobble).
-        progress = min(progress, self.WATCHED_THRESHOLD - 0.1)
+        progress = min(progress, 80 - 0.1)
         self.logger.debug(f"pause({self.scrobbler.media}): {progress}")
         self.queue.scrobble_stop((self.scrobbler, progress))
 
