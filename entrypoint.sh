@@ -29,19 +29,18 @@ setup_user() {
 }
 
 # Run command as app user
-# https://github.com/karelzak/util-linux/issues/325
 run_user() {
 	local uid=$(id -u "$APP_USER")
 	local gid=$(id -g "$APP_GROUP")
 
-	setpriv --euid "$uid" --ruid "$uid" --clear-groups --egid "$gid" --rgid "$gid" -- "$@"
+	su-exec "$uid:$gid" "$@"
 }
 
 switch_user() {
 	local uid=$(id -u "$APP_USER")
 	local gid=$(id -g "$APP_GROUP")
 
-	exec setpriv --euid "$uid" --ruid "$uid" --clear-groups --egid "$gid" --rgid "$gid" -- "$@"
+	exec su-exec "$uid:$gid" "$@"
 }
 
 fix_permissions() {
@@ -69,9 +68,9 @@ test -n "$TRACE" && set -x
 # Test docker image health
 if [ "${1:-}" = "test" ]; then
 	# Check tools linkage
-	ldd /usr/bin/setpriv
-	ldd /usr/bin/usermod
-	ldd /usr/bin/groupmod
+	ldd /sbin/su-exec
+	ldd /usr/sbin/usermod
+	ldd /usr/sbin/groupmod
 	# Continue with info command
 	set -- "info"
 fi
