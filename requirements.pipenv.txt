@@ -5,4 +5,4 @@
 #
 
 -i https://pypi.org/simple/
-pipenv==2026.6.0
+pipenv==2026.6.1
