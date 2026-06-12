@@ -7,47 +7,40 @@ on:
 
 permissions:
   actions: write
+  contents: read
 
 jobs:
   check-and-trigger:
     runs-on: ubuntu-latest
     steps:
-      - name: Get latest upstream commit from main branch
+      - name: Get latest upstream commit
         id: upstream
         run: |
           commit=$(git ls-remote https://github.com/Taxel/PlexTraktSync.git refs/heads/main | cut -f1)
           echo "commit=$commit" >> "$GITHUB_OUTPUT"
 
-      - name: Get last built commit from repo variables
-        id: last
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if value=$(gh variable get LAST_UPSTREAM_COMMIT 2>/dev/null); then
-            echo "commit=$value" >> "$GITHUB_OUTPUT"
-            echo "Last built: $value"
-          else
-            echo "commit=" >> "$GITHUB_OUTPUT"
-            echo "Last built: (none)"
-          fi
+      - name: Check if this commit was already built
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: .upstream_commit
+          key: upstream-commit-${{ steps.upstream.outputs.commit }}
 
-      - name: Compare and decide
+      - name: Save commit marker for new upstream
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          echo "${{ steps.upstream.outputs.commit }}" > .upstream_commit
+
+      - name: Decide whether to trigger
         id: decide
         run: |
-          if [ "${{ steps.last.outputs.commit }}" = "${{ steps.upstream.outputs.commit }}" ]; then
+          if [ "${{ steps.cache.outputs.cache-hit }}" = "true" ]; then
             echo "trigger=false" >> "$GITHUB_OUTPUT"
             echo "No new upstream commits — skipping"
           else
             echo "trigger=true" >> "$GITHUB_OUTPUT"
             echo "New upstream commit — triggering build"
           fi
-
-      - name: Update last built commit variable
-        if: steps.decide.outputs.trigger == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh variable set LAST_UPSTREAM_COMMIT --body "${{ steps.upstream.outputs.commit }}"
 
       - name: Trigger Docker Publish Main
         if: steps.decide.outputs.trigger == 'true'
