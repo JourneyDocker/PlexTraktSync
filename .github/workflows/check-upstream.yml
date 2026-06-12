@@ -21,7 +21,7 @@ jobs:
 
       - name: Check if this commit was already built
         id: cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .upstream_commit
           key: upstream-commit-${{ steps.upstream.outputs.commit }}
@@ -44,7 +44,7 @@ jobs:
 
       - name: Trigger Docker Publish Main
         if: steps.decide.outputs.trigger == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             await github.rest.actions.createWorkflowDispatch({
