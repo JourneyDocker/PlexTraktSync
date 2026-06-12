@@ -1,0 +1,30 @@
+# https://docs.docker.com/build/building/context/#dockerignore-files
+
+# Git
+.git/
+.gitattributes
+.gitignore
+
+# CI/CD
+.github/
+
+# IDE & OS files
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+*.egg
+
+# Keep only what's needed for the build
+!Patches/
+!entrypoint.sh

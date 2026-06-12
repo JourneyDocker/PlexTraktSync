@@ -1,0 +1,119 @@
+--- a/plextraktsync/plex/SessionCollection.py
++++ b/plextraktsync/plex/SessionCollection.py
+@@ -3,6 +3,8 @@
+ from collections import UserDict
+ from typing import TYPE_CHECKING
+ 
++from plexapi.exceptions import BadRequest, Unauthorized
++
+ if TYPE_CHECKING:
+     from plextraktsync.plex.PlexApi import PlexApi
+ 
+@@ -26,3 +28,15 @@ def update_sessions(self):
+             if not session.usernames:
+                 continue
+             self[str(session.sessionKey)] = session.usernames[0]
++
++    def get_username(self, session_key: str):
++        try:
++            self.update_sessions()
++        except (BadRequest, Unauthorized):
++            return None
++
++        username = self.get(str(session_key))
++        if not username:
++            return None
++
++        return username
+--- a/plextraktsync/watch/WatchStateUpdater.py
++++ b/plextraktsync/watch/WatchStateUpdater.py
+@@ -48,16 +48,30 @@ def clamp_percent(self, percent: float) -> float:
+         return percent
+ 
+     @cached_property
+-    def username_filter(self):
+-        if not self.config["watch"]["username_filter"]:
++    def username_filtering_enabled(self) -> bool:
++        return bool(self.config["watch"]["username_filter"])
++
++    @cached_property
++    def username_filter_target(self):
++        # This must be a username, not email.
++        if "PLEX_USERNAME" in self.config and self.config["PLEX_USERNAME"]:
++            return self.config["PLEX_USERNAME"]
++
++        account = self.plex.account
++        if account is None:
++            return None
++
++        return account.username
++
++    def normalize_username(self, username):
++        if username is None:
+             return None
+ 
+-        if self.plex.has_sessions():
+-            # This must be a username, not email
+-            return self.plex.account.username
++        normalized = str(username).strip()
++        if not normalized:
++            return None
+ 
+-        self.logger.warning("No permission to access sessions, disabling username filter")
+-        return None
++        return normalized.casefold()
+ 
+     @cached_property
+     def ignore_clients(self):
+@@ -74,7 +88,7 @@ def progressbar(self):
+ 
+     @cached_property
+     def sessions(self):
+-        if not self.username_filter:
++        if not self.username_filtering_enabled:
+             return None
+ 
+         from plextraktsync.plex.SessionCollection import SessionCollection
+@@ -221,10 +235,40 @@ def can_scrobble(self, event: PlaySessionStateNotification):
+             if event.client_identifier in self.ignore_clients:
+                 return False
+ 
+-        if not self.username_filter:
++        if not self.username_filtering_enabled:
+             return True
+ 
+-        return self.sessions[event.session_key] == self.username_filter
++        target_username = self.username_filter_target
++        target_username_normalized = self.normalize_username(target_username)
++        if target_username_normalized is None:
++            self.logger.warning(
++                "can_scrobble: username_filter enabled but target username could not be resolved; skipping session %s",
++                event.session_key,
++            )
++            return False
++
++        sessions = self.sessions
++        session_username = sessions.get_username(event.session_key) if sessions is not None else None
++        if session_username is None:
++            self.logger.debug(
++                "can_scrobble: No username available for session %s; skipping event %s",
++                event.session_key,
++                event,
++            )
++            return False
++
++        session_username_normalized = self.normalize_username(session_username)
++        if session_username_normalized != target_username_normalized:
++            self.logger.debug(
++                "can_scrobble: Session username %r did not match target %r for session %s; skipping event %s",
++                session_username,
++                target_username,
++                event.session_key,
++                event,
++            )
++            return False
++
++        return True
+ 
+     def scrobble(self, m: Media, percent: float, event: PlaySessionStateNotification):
+         tm = m.trakt
