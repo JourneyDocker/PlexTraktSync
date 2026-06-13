@@ -1,0 +1,19 @@
+name: keep-alive
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron:  '0 0 * * *'
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Keep workflow alive
+        uses: entepotenz/keep-github-actions-alive-min-dependencies@v1
