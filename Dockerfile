@@ -13,6 +13,10 @@ WORKDIR /src
 ARG PTS_VERSION=main
 ARG PTS_REPO=https://github.com/Taxel/PlexTraktSync.git
 
+# Cache buster: GitHub's ref API returns a different response per-commit,
+# forcing the next layer to re-execute instead of using a stale cached clone.
+ADD "https://api.github.com/repos/Taxel/PlexTraktSync/git/refs/heads/${PTS_VERSION}" /upstream-ref.json
+
 RUN git clone --depth 1 --branch ${PTS_VERSION} ${PTS_REPO} .
 
 
@@ -21,10 +25,14 @@ FROM source AS patched
 
 COPY Patches/ /patches/
 
+# Install dos2unix to normalize patch line endings (defense against CRLF)
+RUN apk add --no-cache dos2unix
+
 RUN if ls /patches/*.patch 2>/dev/null; then \
         for patch in /patches/*.patch; do \
             echo "==> Applying: $(basename $patch)"; \
-            patch -p1 -d /src < "$patch"; \
+            dos2unix "$patch"; \
+            patch -p1 --ignore-whitespace -d /src < "$patch"; \
         done; \
     else \
         echo "No patches to apply"; \
