@@ -1,8 +1,6 @@
-diff --git a/plextraktsync/pytrakt_extensions.py b/plextraktsync/pytrakt_extensions.py
-index 4286f35..fdca4f8 100644
 --- a/plextraktsync/pytrakt_extensions.py
 +++ b/plextraktsync/pytrakt_extensions.py
-@@ -27,7 +27,7 @@ def __init__(
+@@ -21,7 +21,7 @@
          completed=False,
          last_watched_at=None,
          collected_at=None,
@@ -11,7 +9,7 @@ index 4286f35..fdca4f8 100644
      ):
          self.number = number
          self.aired = aired
-@@ -42,7 +42,7 @@ def get_completed(self):
+@@ -36,7 +36,7 @@
  
  
  class SeasonProgress:
@@ -20,7 +18,7 @@ index 4286f35..fdca4f8 100644
          self.number = number
          self.aired = aired
          self.episodes = {}
-@@ -79,7 +79,7 @@ def __init__(
+@@ -74,7 +74,7 @@
          next_episode=0,
          last_episode=0,
          last_collected_at=None,

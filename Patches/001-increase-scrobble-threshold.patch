@@ -1,6 +1,6 @@
 --- a/plextraktsync/trakt/ScrobblerProxy.py
 +++ b/plextraktsync/trakt/ScrobblerProxy.py
-@@ -14,7 +14,7 @@ class ScrobblerProxy:
+@@ -14,7 +14,7 @@
      Proxy to Scrobbler that queues requests to update trakt
      """
  
@@ -9,7 +9,7 @@
  
      logger = logging.getLogger(__name__)
  
-@@ -29,7 +29,7 @@ def pause(self, progress: float):
+@@ -29,7 +29,7 @@
          progress = max(progress, 1.0)  # Trakt requires at least 1%
          # Cap progress below WATCHED_THRESHOLD to prevent Trakt from marking
          # a paused item as watched (stop with progress >= 80% triggers a scrobble).
@@ -17,3 +17,4 @@
 +        progress = min(progress, 80 - 0.1)
          self.logger.debug(f"pause({self.scrobbler.media}): {progress}")
          self.queue.scrobble_stop((self.scrobbler, progress))
+ 
