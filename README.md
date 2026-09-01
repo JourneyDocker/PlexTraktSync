@@ -1,9 +1,3 @@
-> **⚠️ This repository is no longer maintained.**  
-> The Trakt website has degraded significantly with the rollout of V3 and the
-> new restrictions on connected apps. I no longer use or support the platform,
-> and won't be making or pushing further changes here. Feel free to fork if
-> you'd like to carry this forward.
-
 # PlexTraktSync Patched
 
 A Docker build of [PlexTraktSync](https://github.com/Taxel/PlexTraktSync) that
