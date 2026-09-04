@@ -1,0 +1,120 @@
+diff --git a/plextraktsync/config.default.yml b/plextraktsync/config.default.yml
+index 06ba0a8..003a519 100644
+--- a/plextraktsync/config.default.yml
++++ b/plextraktsync/config.default.yml
+@@ -13,6 +13,9 @@ config:
+ plex:
+   timeout: 30
+ 
++tmdb:
++  api_key: ~
++
+ logging:
+   append: true
+   # Whether to show timestamps in console messages
+diff --git a/plextraktsync/factory/Factory.py b/plextraktsync/factory/Factory.py
+index c5d4858..2fc2a7b 100644
+--- a/plextraktsync/factory/Factory.py
++++ b/plextraktsync/factory/Factory.py
+@@ -40,6 +40,12 @@ def trakt_api(self):
+ 
+         return TraktApi()
+ 
++    @cached_property
++    def tmdb_api(self):
++        from plextraktsync.tmdb.TmdbApi import TmdbApi
++
++        return TmdbApi()
++
+     @cached_property
+     def plex_api(self):
+         from plextraktsync.plex.PlexApi import PlexApi
+diff --git a/plextraktsync/media/MediaFactory.py b/plextraktsync/media/MediaFactory.py
+index 6ac7c5b..61c5d93 100644
+--- a/plextraktsync/media/MediaFactory.py
++++ b/plextraktsync/media/MediaFactory.py
+@@ -52,6 +52,20 @@ def resolve_any(self, pm: PlexLibraryItem, show: Media = None) -> Media | None:
+                 self.logger.debug(f"Resolved {guid} of {guid.pm} to {m}")
+                 return m
+ 
++        if not any(g.provider == "tmdb" for g in guids):
++            from plextraktsync.factory import factory
++            from plextraktsync.plex.guid.PlexGuid import PlexGuid
++
++            tmdb_api = factory.tmdb_api
++            for guid in guids:
++                if guid.provider not in ("imdb", "tvdb"):
++                    continue
++                tmdb_id = tmdb_api.resolve(guid.provider, guid.id, guid.type == "movie")
++                if tmdb_id:
++                    m = self.resolve_guid(PlexGuid(f"tmdb://{tmdb_id}", guid.type, guid.pm), show)
++                    if m:
++                        return m
++
+         syncable = [g for g in guids if g.syncable]
+         if syncable:
+             first = syncable[0]
+diff --git a/plextraktsync/tmdb/TmdbApi.py b/plextraktsync/tmdb/TmdbApi.py
+new file mode 100644
+index 0000000..6249e50
+--- /dev/null
++++ b/plextraktsync/tmdb/TmdbApi.py
+@@ -0,0 +1,58 @@
++from __future__ import annotations
++
++from requests import RequestException, get
++
++from plextraktsync.factory import factory, logging
++from plextraktsync.util.Timer import Timer
++
++
++class TmdbApi:
++    """
++    Resolve tvdb/imdb external ids to tmdb ids via TMDB find endpoint.
++    https://developer.themoviedb.org/reference/find-by-id
++    """
++
++    logger = logging.getLogger(__name__)
++    base_url = "https://api.themoviedb.org/3/find"
++    sources = {"imdb": "imdb_id", "tvdb": "tvdb_id"}
++
++    def __init__(self):
++        self.cache: dict[tuple[str, str], int | None] = {}
++        self.timer = Timer(delay=0.25)
++
++    @property
++    def api_key(self):
++        try:
++            key = factory.config["tmdb"]["api_key"]
++        except (KeyError, TypeError):
++            return None
++        return key or None
++
++    def resolve(self, provider: str, external_id: str, is_movie: bool) -> int | None:
++        key = (provider, external_id)
++        if key not in self.cache:
++            self.cache[key] = self._find(provider, external_id, is_movie)
++        return self.cache[key]
++
++    def _find(self, provider: str, external_id: str, is_movie: bool) -> int | None:
++        api_key = self.api_key
++        if not api_key or provider not in self.sources:
++            return None
++        self.timer.wait_if_needed()
++        params = {"external_source": self.sources[provider]}
++        headers = {}
++        if api_key.startswith("eyJ") and "." in api_key:
++            headers["Authorization"] = f"Bearer {api_key}"
++        else:
++            params["api_key"] = api_key
++        try:
++            response = get(f"{self.base_url}/{external_id}", params=params, headers=headers, timeout=10)
++            response.raise_for_status()
++            data = response.json()
++        except RequestException as e:
++            self.logger.debug(f"TMDB lookup failed for {provider} {external_id}: {e}")
++            return None
++        results = data.get("movie_results" if is_movie else "tv_results") or []
++        if not results:
++            return None
++        return results[0].get("id")
