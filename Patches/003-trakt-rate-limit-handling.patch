@@ -1,0 +1,85 @@
+--- a/plextraktsync/decorators/rate_limit.py
++++ b/plextraktsync/decorators/rate_limit.py
+@@ -1,5 +1,6 @@
+ from __future__ import annotations
+ 
++import random
+ from time import sleep
+ 
+ from click import ClickException
+@@ -8,15 +9,54 @@ from trakt.errors import RateLimitException
+ 
+ from plextraktsync.config import TRAKT_RETRY_AFTER_MARGIN
+ from plextraktsync.factory import logging
++from plextraktsync.util.Timer import Timer
+ 
+ logger = logging.getLogger(__name__)
+ 
++# https://docs.trakt.tv/docs/rate-limiting
++# Authed GET: 500 calls / 5 min (~0.6s/call), POST/PUT/DELETE: 1 call/sec.
++# Bulk syncs (per-episode tmdb/tvdb/imdb lookups) burst into 429s without
++# pacing, so throttle GETs proactively and honor Retry-After on 429.
++_GET_TIMER = Timer(delay=0.7)
++
++
++def _retry_after_seconds(e: RateLimitException, attempt: int) -> float:
++    for attr in ("retry_after", "retry_after_seconds"):
++        try:
++            value = getattr(e, attr, None)
++            if value is None:
++                continue
++            seconds = float(value)
++            if seconds > 0:
++                return seconds
++        except (TypeError, ValueError):
++            continue
++    response = getattr(e, "response", None)
++    headers = getattr(response, "headers", None) or getattr(e, "headers", None) or {}
++    for key in ("Retry-After", "retry-after"):
++        if key in headers:
++            try:
++                return max(1.0, float(headers[key]))
++            except (TypeError, ValueError):
++                break
++    # exponential fallback when server gives no Retry-After, cap 60s
++    return float(min(2**attempt, 60))
++
++
++def _ratelimit_info(e: RateLimitException) -> str:
++    response = getattr(e, "response", None)
++    headers = getattr(response, "headers", None) or getattr(e, "headers", None) or {}
++    for key in ("X-Ratelimit", "X-RateLimit", "x-ratelimit"):
++        if key in headers:
++            return f" {key}: {headers[key]}"
++    return ""
++
+ 
+-# https://trakt.docs.apiary.io/#introduction/rate-limiting
+ @decorator
+-def rate_limit(fn, retries=5, *args, **kwargs):
++def rate_limit(fn, retries=10, *args, **kwargs):
+     retry = 0
+     while True:
++        _GET_TIMER.wait_if_needed()
+         try:
+             return fn(*args, **kwargs)
+         except RateLimitException as e:
+@@ -25,8 +65,14 @@ def rate_limit(fn, retries=5, *args, **kwargs):
+                 logger.error(f"Last call: {fn.__module__}.{fn.__name__}({args[1:]}, {kwargs})")
+                 raise ClickException("Trakt API didn't respond properly, script will abort now. Please try again later.")
+ 
+-            seconds = e.retry_after
++            seconds = _retry_after_seconds(e, retry)
+             retry += 1
+-            logger.warning(f"{e} for {fn.__module__}.{fn.__name__}(), retrying after {seconds} seconds (try: {retry}/{retries})")
+-            logger.debug(e.details)
+-            sleep(seconds + TRAKT_RETRY_AFTER_MARGIN)
++            logger.warning(
++                f"{e} for {fn.__module__}.{fn.__name__}(), "
++                f"retrying after {seconds:.1f} seconds (try: {retry}/{retries}){_ratelimit_info(e)}"
++            )
++            try:
++                logger.debug(e.details)
++            except AttributeError:
++                logger.debug(e)
++            sleep(seconds + TRAKT_RETRY_AFTER_MARGIN + random.uniform(0, 0.5))
