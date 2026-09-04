@@ -1,0 +1,34 @@
+--- a/plextraktsync/media/MediaFactory.py
++++ b/plextraktsync/media/MediaFactory.py
+@@ -52,6 +52,14 @@
+                 self.logger.debug(f"Resolved {guid} of {guid.pm} to {m}")
+                 return m
+
++        syncable = [g for g in guids if g.syncable]
++        if syncable:
++            first = syncable[0]
++            tried = ", ".join(str(g) for g in syncable)
++            self.logger.warning(
++                f"{first.title_link}: Skipping {first.type} not found on Trakt (tried: {tried})",
++                extra={"markup": True},
++            )
+         return None
+
+     def resolve_guid(self, guid: PlexGuid, show: Media = None):
+@@ -78,14 +86,14 @@
+             else:
+                 tm = self.trakt.find_by_guid(guid)
+         except (TraktException, RequestException) as e:
+-            self.logger.warning(
++            self.logger.debug(
+                 f"{guid.title_link}: Skipping {guid}: Trakt errors: {e}",
+                 extra={"markup": True},
+             )
+             return None
+
+         if tm is None:
+-            self.logger.warning(
++            self.logger.debug(
+                 f"{guid.title_link}: Skipping {guid} {guid.type} not found on Trakt",
+                 extra={"markup": True},
+             )
