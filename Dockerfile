@@ -40,7 +40,7 @@ RUN if ls /patches/*.patch 2>/dev/null; then \
 
 
 # --- Build Wheels (dependencies) ----------------------------------------------
-FROM python:3.14.7-alpine3.23 AS wheels
+FROM python:3.14.8-alpine3.23 AS wheels
 WORKDIR /dist
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
@@ -63,14 +63,14 @@ RUN --mount=type=cache,id=pip,target=/root/.cache/pip \
 
 
 # --- Install Dependencies -----------------------------------------------------
-FROM python:3.14.7-alpine3.23 AS build
+FROM python:3.14.8-alpine3.23 AS build
 
 COPY --from=wheels /wheels /wheels
 RUN pip install --prefix=/install --no-cache-dir /wheels/*.whl
 
 
 # --- Compile Application ------------------------------------------------------
-FROM python:3.14.7-alpine3.23 AS compile
+FROM python:3.14.8-alpine3.23 AS compile
 ARG APP_VERSION
 ENV APP_VERSION=$APP_VERSION
 
@@ -89,7 +89,7 @@ RUN python -m compileall . && \
 
 
 # --- Extract Runtime Tools ----------------------------------------------------
-FROM python:3.14.7-alpine3.23 AS tools
+FROM python:3.14.8-alpine3.23 AS tools
 WORKDIR /dist
 
 RUN apk add --no-cache util-linux shadow
@@ -105,7 +105,7 @@ EOF
 
 
 # --- Final Runtime Image ------------------------------------------------------
-FROM python:3.14.7-alpine3.23 AS runtime
+FROM python:3.14.8-alpine3.23 AS runtime
 
 WORKDIR /app
 
