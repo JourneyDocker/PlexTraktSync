@@ -6,6 +6,8 @@
 # minimal runtime image.
 # ==============================================================================
 
+ARG PYTHON_IMAGE=python:3.15.1-alpine
+
 # --- Clone Source --------------------------------------------------------------
 FROM alpine/git:latest AS source
 WORKDIR /src
@@ -40,7 +42,7 @@ RUN if ls /patches/*.patch 2>/dev/null; then \
 
 
 # --- Build Wheels (dependencies) ----------------------------------------------
-FROM python:3.15.1-alpine3.23 AS wheels
+FROM ${PYTHON_IMAGE} AS wheels
 WORKDIR /dist
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
@@ -63,14 +65,14 @@ RUN --mount=type=cache,id=pip,target=/root/.cache/pip \
 
 
 # --- Install Dependencies -----------------------------------------------------
-FROM python:3.15.1-alpine3.23 AS build
+FROM ${PYTHON_IMAGE} AS build
 
 COPY --from=wheels /wheels /wheels
 RUN pip install --prefix=/install --no-cache-dir /wheels/*.whl
 
 
 # --- Compile Application ------------------------------------------------------
-FROM python:3.15.1-alpine3.23 AS compile
+FROM ${PYTHON_IMAGE} AS compile
 ARG APP_VERSION
 ENV APP_VERSION=$APP_VERSION
 
@@ -89,7 +91,7 @@ RUN python -m compileall . && \
 
 
 # --- Extract Runtime Tools ----------------------------------------------------
-FROM python:3.15.1-alpine3.23 AS tools
+FROM ${PYTHON_IMAGE} AS tools
 WORKDIR /dist
 
 RUN apk add --no-cache util-linux shadow
@@ -105,7 +107,7 @@ EOF
 
 
 # --- Final Runtime Image ------------------------------------------------------
-FROM python:3.15.1-alpine3.23 AS runtime
+FROM ${PYTHON_IMAGE} AS runtime
 
 WORKDIR /app
 
