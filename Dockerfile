@@ -6,7 +6,7 @@
 # minimal runtime image.
 # ==============================================================================
 
-ARG PYTHON_IMAGE=python:3.15.1-alpine
+ARG PYTHON_IMAGE=python:3.15.2-alpine
 
 # --- Clone Source --------------------------------------------------------------
 FROM alpine/git:latest AS source
